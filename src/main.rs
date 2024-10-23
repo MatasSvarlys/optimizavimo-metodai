@@ -7,10 +7,6 @@ fn main() {
     let x1 = vec![1.0, 1.0];
     let xm= vec![0.0, 0.3];
 
-    //test to see that point [0, 0] has no meaning when calculating gradient descent
-    let ld = linear_descent(&vec![0.0, 0.0]);
-    println!("max point: ({}, {}); max V value: {}", ld[0], ld[1], target_function(&ld));
-
     //outputs
     print_answer(x0);
     print_answer(x1);
@@ -108,28 +104,29 @@ fn linear_descent(starting_point: &Vec<f64>) -> Vec<f64>{
 
 fn steepest_descent(starting_point: &Vec<f64>) -> Vec<f64>{
     fn backtracking_line_search(x: &Vec<f64>, gradient: &Vec<f64>) -> f64 {
-        let alpha = 0.5;  // Step size reduction factor
-        let beta = 0.8;   // Condition factor for sufficient decrease
-        let mut step_size = 0.5;
+        let alpha = 0.8;  // Step size reduction factor
+        let beta = 0.2;   // Condition factor for sufficient decrease
+        let mut step_size = 3.0;
 
         // Initial function value at current point
         let current_value = target_function(x);
 
-        // Backtracking to find the optimal step size
-        while step_size > 1e-8 {  // Prevent the step size from becoming too small
+        while step_size > 1e-15 {//make sure that you dont get stuck if step size becomes too small
+            //generate a potential new point a pre-determined step size away
             let new_point = vec![
                 x[0] + step_size * gradient[0],
                 x[1] + step_size * gradient[1],
             ];
 
+            //check the value at that point
             let new_value = target_function(&new_point);
 
-            // Check if this step size satisfies the condition
+            // Check if this new value isnt too big (specified by beta)
             if new_value > current_value + beta * step_size * (gradient[0].powi(2) + gradient[1].powi(2)) {
                 return step_size;
             }
 
-            // If not, reduce the step size
+            // If it is, reduce the step size and try again
             step_size *= alpha;
         }
 
