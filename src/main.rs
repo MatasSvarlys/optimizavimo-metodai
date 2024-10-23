@@ -1,3 +1,5 @@
+use core::f64;
+
 fn main() {
     //a = 0; b =3
     //starting points
@@ -20,28 +22,23 @@ fn main() {
 }
 
 fn print_answer(n: Vec<f64>) -> (){
-    //helper funcs
-    fn calc_surface_areas(x: f64, y: f64, z: f64) -> Vec<f64>{
-        vec![2.0*x*y, 2.0*y*z, 2.0*x*z]
-    }
-
-
-    let s_x = calc_surface_areas(n[0], n[1], calc_last_variable(n[0], n[1]));
     //first check if a box like this can exist at all
-    if check_if_box_is_correct(s_x[0], s_x[1], s_x[2]){
+    if check_if_box_is_correct(n[0], n[1], calc_last_variable(n[0], n[1])){
         let gradient = target_function_gradient(&n);
-        println!("input: [{}, {}]; last var: {}; f(X)={}; delta f(X)=[{}, {}]", n[0], n[1], calc_last_variable(n[0], n[1]), target_function(&n), gradient[0], gradient[1]);
+        println!("input: [{}, {}]; 3rd pair: {}; volume with these sides: {}; direction vector at point=[{}, {}]", n[0], n[1], calc_last_variable(n[0], n[1]), target_function(&n), gradient[0], gradient[1]);
         
         //linear descent results
         let ld: Vec<f64> = linear_descent(&n);
-        println!("max point: ({}, {}); max V value: {}", ld[0], ld[1], target_function(&ld));
+        println!("-Linear descent result: max point: ({}, {}); max V value: {}", ld[0], ld[1], target_function(&ld));
     
+        let sd: Vec<f64> = steepest_descent(&n);
+        println!("-Steepest descent result: max point: ({}, {}); max V value: {}", sd[0], sd[1], target_function(&sd));
     }
 }
 
-//if box surface area is one, given 2 side lenghts of the box, calculate last one 
+//if box total surface area is one, given 2 pairs of side surface areas, calculate last one 
 fn calc_last_variable(a: f64, b: f64) -> f64{
-    (0.5-a*b)/(a+b)
+    1.0-a-b
 }
 
 //variables are actually 2ab, 2ac, 2bc
@@ -51,32 +48,31 @@ fn check_if_box_is_correct(s_a_b: f64, s_a_c: f64, s_b_c: f64) -> bool{
         println!("Surface area does not add to 1");
         return false;
     }
-    if s_a_b <= 0.0 || s_a_c <= 0.0 || s_b_c <= 0.0{
-        println!("Invalid box");
-        return false;
-    }
+    // if s_a_b <= 0.0 || s_a_c <= 0.0 || s_b_c <= 0.0{
+    //     println!("Invalid box");
+    //     return false;
+    // }
     true
 }
 
 //variables are actually 2ab, 2ac, 2bc
-//idfk where to use this, but in step 2 they ask to have a function for this :(((
 fn calc_volume_squared(s_a_b: f64, s_a_c: f64, s_b_c: f64) -> f64{
-    s_a_b+s_a_c+s_b_c / 8.0 //2ab*2ac*2cb=8V^2
+    (s_a_b*s_a_c*s_b_c) / 8.0 //2ab*2ac*2cb=8V^2
 }   
 
-//just the volume of the box given all side lenghts
+//calc volume from its square
 fn target_function(x:&Vec<f64>) -> f64{
-    x[0]*x[1]*calc_last_variable(x[0], x[1])
+    calc_volume_squared(x[0], x[1], calc_last_variable(x[0], x[1])).sqrt()
 }
 
 //derivatives by derivative calculator, idfk how to do multivariable differenciation
 fn target_function_gradient(x:&Vec<f64>) -> Vec<f64>{
     fn dx(x: f64, y: f64) -> f64{
-        y*(-1.0*x.powf(2.0)*y-x*2.0*y.powf(2.0)+0.5*y)/(x+y).powf(2.0)
+        y*(-2.0*x-y+1.0)
     }
 
     fn dy(x: f64, y: f64) -> f64{
-        x*(-1.0*x*y.powf(2.0)-x.powf(2.0)*2.0*y+0.5*x)/(x+y).powf(2.0)
+        x*(1.0-x-2.0*y)
     }
 
     vec![dx(x[0], x[1]), dy(x[0], x[1])]
@@ -91,7 +87,7 @@ fn linear_descent(starting_point: &Vec<f64>) -> Vec<f64>{
     let mut step_count = 0;
 
     //constants
-    let gama = 0.08;
+    let gama = 0.3;
     let gradient_tolerance = 10e-4;
     
     //rest of steps
@@ -110,18 +106,61 @@ fn linear_descent(starting_point: &Vec<f64>) -> Vec<f64>{
     return next_point
 }
 
-/*
 fn steepest_descent(starting_point: &Vec<f64>) -> Vec<f64>{
-    fn calc_optimal_step_size() -> f64{
+    fn backtracking_line_search(x: &Vec<f64>, gradient: &Vec<f64>) -> f64 {
+        let alpha = 0.5;  // Step size reduction factor
+        let beta = 0.8;   // Condition factor for sufficient decrease
+        let mut step_size = 0.5;
 
+        // Initial function value at current point
+        let current_value = target_function(x);
+
+        // Backtracking to find the optimal step size
+        while step_size > 1e-8 {  // Prevent the step size from becoming too small
+            let new_point = vec![
+                x[0] + step_size * gradient[0],
+                x[1] + step_size * gradient[1],
+            ];
+
+            let new_value = target_function(&new_point);
+
+            // Check if this step size satisfies the condition
+            if new_value > current_value + beta * step_size * (gradient[0].powi(2) + gradient[1].powi(2)) {
+                return step_size;
+            }
+
+            // If not, reduce the step size
+            step_size *= alpha;
+        }
+
+        step_size
     }
-    
-    let mut step_count = 0;
 
+    let mut step_count = 0;
+    let mut next_point = starting_point.clone();
+    let mut gradient = target_function_gradient(starting_point);
+    let mut gradient_norm = (gradient[0].powf(2.0)+gradient[1].powf(2.0)).sqrt();
 
     //constants
-    let gama = 0.08;
     let gradient_tolerance = 10e-4;
     
+    while gradient_norm > gradient_tolerance {
+        let optimal_step = backtracking_line_search(&next_point, &gradient);
+        
+        if optimal_step < 1e-8 {
+            println!("Optimal step size too small, stopping...");
+            break;
+        }
+
+        // println!("Optimal step size: {}", optimal_step);
+        next_point[0]=next_point[0]+optimal_step*gradient[0];
+        next_point[1]=next_point[1]+optimal_step*gradient[1];
+        
+        gradient = target_function_gradient(&next_point);
+        gradient_norm = (gradient[0].powf(2.0)+gradient[1].powf(2.0)).sqrt();
+        
+        step_count+=1;
+    }
+    println!("step count: {}", step_count);
+    next_point
 }
-*/
