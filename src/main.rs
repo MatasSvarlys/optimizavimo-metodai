@@ -35,11 +35,11 @@ fn print_answer(n: Vec<f64>) -> (){
         //simplex method
         println!("\nstarting simplex reduction");
         let simplex_answ = simplex(&n);
-        println!("-Simplex method result: found (x, y): {:?}, value at found point: {}", simplex_answ.clone(), target_function(&simplex_answ));
+        if !target_function(&simplex_answ).is_nan(){
+            println!("-Simplex method result: found (x, y): {:?}, value at found point: {}", simplex_answ.clone(), target_function(&simplex_answ));
+        }
     // }
 }
-
-
 
 //calc volume from its square
 fn target_function(x:&Vec<f64>) -> f64{
@@ -230,7 +230,10 @@ fn simplex(starting_point: &Vec<f64>) -> Vec<f64> {
     let mut step_count = 1;
     //create a simplex
     let mut simplex = create_initial_simplex(starting_point, initial_side_length);
-    
+    if target_function(&simplex[1]).is_nan() && target_function(&simplex[0]).is_nan() && target_function(&simplex[2]).is_nan(){
+        println!("Could not find function values at any of the simplex corners");
+        return simplex[0].clone();
+    }
     //while any of the side lengths are big enough
     while calc_distance_between(&simplex[0], &simplex[1]) > min_side_length || 
           calc_distance_between(&simplex[0], &simplex[2]) > min_side_length || 
@@ -241,14 +244,14 @@ fn simplex(starting_point: &Vec<f64>) -> Vec<f64> {
         println!("{}. Simplex: [best:{:?}, mid:{:?}, worst:{:?}], reflected point: {:?}, f(x,y) at best point: {}", step_count, simplex[0], simplex[1], simplex[2], current_reflected_point, target_function(&simplex[0]));
 
         //check if we moved in the correct direction at least enough to get a better point
-        if target_function(&current_reflected_point) > target_function(&simplex[1]) {
+        if target_function(&current_reflected_point) > target_function(&simplex[1]){
             //replace worst point and sort simplex points by function values
             println!("    Replaced worst point");
             simplex[2] = current_reflected_point.clone();
             simplex = order_simplex(simplex);
         } else {
             //shrink towards best point
-            println!("    Srunk simplex");
+            println!("    Shrunk simplex");
             shrink_simplex(&mut simplex);
             simplex = order_simplex(simplex);
         }
